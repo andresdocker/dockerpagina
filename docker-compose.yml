@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  # -------------------------
+  # Nginx (Reverse Proxy)
+  # -------------------------
+  nginx:
+    image: nginx:latest
+    container_name: dockerandres-nginx
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./index.html:/usr/share/nginx/html/index.html
+      - ./img:/usr/share/nginx/html/img:ro  # Carpeta para las imágenes
+    depends_on:
+      - jenkins
+      - zabbix-web
+      - portainer
+    networks:
+      - main-net
+
+  # -------------------------
+  # Jenkins (CI/CD)
+  # -------------------------
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: dockerandres-jenkins
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    networks:
+      - main-net
+
+  # -------------------------
+  # Zabbix Server
+  # -------------------------
+  zabbix-server:
+    image: zabbix/zabbix-server-pgsql
+    container_name: dockerandres-zabbix-server
+    depends_on:
+      - zabbix-postgres
+    environment:
+      DB_SERVER_HOST: zabbix-postgres
+      POSTGRES_PASSWORD: zabbix
+      POSTGRES_USER: zabbix
+      POSTGRES_DB: zabbix
+    ports:
+      - "10051:10051"
+    networks:
+      - main-net
+
+  # -------------------------
+  # Zabbix Frontend (Nginx)
+  # -------------------------
+  zabbix-web:
+    image: zabbix/zabbix-web-nginx-pgsql
+    container_name: dockerandres-zabbix-web
+    depends_on:
+      - zabbix-server
+      - zabbix-postgres
+    environment:
+      DB_SERVER_HOST: zabbix-postgres
+      POSTGRES_PASSWORD: zabbix
+      POSTGRES_USER: zabbix
+      POSTGRES_DB: zabbix
+      ZBX_SERVER_HOST: dockerandres-zabbix-server
+    ports:
+      - "8084:8080"
+    networks:
+      - main-net
+
+  # -------------------------
+  # Zabbix PostgreSQL
+  # -------------------------
+  zabbix-postgres:
+    image: postgres:13-alpine
+    container_name: dockerandres-zabbix-postgres
+    environment:
+      POSTGRES_PASSWORD: zabbix
+      POSTGRES_USER: zabbix
+      POSTGRES_DB: zabbix
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - main-net
+
+  # -------------------------
+  # Portainer (Container Management)
+  # -------------------------
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: dockerandres-portainer
+    ports:
+      - "9000:9000"
+    networks:
+      - main-net
+
+# -------------------------
+# Networks and Volumes
+# -------------------------
+networks:
+  main-net:
+
+volumes:
+  postgres_data:
+

@@ -1,0 +1,173 @@
+#!/bin/bash
+
+# Detectar si usar docker-compose o docker compose
+if command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE="docker-compose"
+elif command -v docker &> /dev/null && docker compose version &> /dev/null; then
+    DOCKER_COMPOSE="docker compose"
+else
+    echo "Error: No se encontró ni docker-compose ni docker compose."
+    exit 1
+fi
+
+# Obtener la IP del servidor
+SERVER_IP=$(ip -4 addr show | grep -oP '(?<=inet\s)192\.168\.\d+\.\d+')
+
+if [ -z "$SERVER_IP" ]; then
+    echo "No se pudo detectar la IP del servidor."
+    exit 1
+fi
+
+echo -e "\n\033[1;32mLa IP del servidor es:\033[0m $SERVER_IP"
+
+# Eliminar y regenerar nginx.conf
+if [ -f nginx.conf ]; then
+    echo "Eliminando el archivo nginx.conf existente..."
+    rm nginx.conf
+fi
+
+cat <<EOF > nginx.conf
+events {
+    worker_connections 1024;
+}
+
+http {
+    server {
+        listen 80;
+        server_name _;
+
+        # Root directory for serving the HTML page
+        root /usr/share/nginx/html;
+        index index.html;
+
+        # Proxy to Jenkins
+        location /jenkins {
+            proxy_pass http://$SERVER_IP:8080;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+        }
+
+        # Proxy to Zabbix
+        location /zabbix {
+            proxy_pass http://$SERVER_IP:8084;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+        }
+
+        # Proxy to Portainer
+        location /portainer {
+            proxy_pass http://$SERVER_IP:9000;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+        }
+    }
+}
+EOF
+echo -e "\033[1;34mEl archivo nginx.conf ha sido generado con la IP $SERVER_IP.\033[0m"
+
+# Eliminar y regenerar index.html
+if [ -f index.html ]; then
+    echo "Eliminando el archivo index.html existente..."
+    rm index.html
+fi
+
+cat <<EOF > index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMP Solutions Tools</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #0d47a1, #1e88e5);
+            color: white;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        h1 {
+            margin-top: 20px;
+            font-size: 2.5em;
+        }
+        p {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .button {
+            background-color: #1565c0;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1.2em;
+            padding: 15px 30px;
+            margin: 10px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .button:hover {
+            background-color: #42a5f5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AMP Solutions Tools</h1>
+        <p>Access your essential tools below:</p>
+        <a href="http://$SERVER_IP:8080" class="button">Jenkins</a>
+        <a href="http://$SERVER_IP:8084" class="button">Zabbix</a>
+        <a href="http://$SERVER_IP:9000" class="button">Portainer</a>
+    </div>
+</body>
+</html>
+EOF
+echo -e "\033[1;34mEl archivo index.html ha sido generado con la IP $SERVER_IP.\033[0m"
+
+# Reiniciar automáticamente los contenedores
+echo -e "\033[1;33mReiniciando los contenedores...\033[0m"
+$DOCKER_COMPOSE down
+$DOCKER_COMPOSE up -d
+echo -e "\033[1;32mLos contenedores han sido reiniciados.\033[0m"
+
+# Esperar hasta que Jenkins esté listo con un límite de tiempo
+JENKINS_CONTAINER="dockerandres-jenkins"
+JENKINS_PASSWORD=""
+TIMEOUT=120  # Tiempo máximo en segundos
+START_TIME=$(date +%s)
+
+echo -e "\033[1;33mEsperando a que el contenedor de Jenkins esté listo...\033[0m"
+while [ -z "$JENKINS_PASSWORD" ]; do
+    if docker exec "$JENKINS_CONTAINER" test -f /var/jenkins_home/secrets/initialAdminPassword &>/dev/null; then
+        JENKINS_PASSWORD=$(docker exec "$JENKINS_CONTAINER" cat /var/jenkins_home/secrets/initialAdminPassword)
+    fi
+    CURRENT_TIME=$(date +%s)
+    if [ $((CURRENT_TIME - START_TIME)) -ge $TIMEOUT ]; then
+        echo -e "\033[1;31mError: Tiempo de espera agotado para obtener la contraseña inicial de Jenkins.\033[0m"
+        exit 1
+    fi
+    sleep 2
+done
+
+# Mostrar enlaces generados dinámicamente y contraseña después del reinicio
+echo -e "\n\033[1;35m==================== Herramientas ====================\033[0m"
+echo -e "\033[1;36mJenkins:   \033[0mhttp://$SERVER_IP:8080"
+echo -e "\033[1;36mZabbix:    \033[0mhttp://$SERVER_IP:8084"
+echo -e "\033[1;36mPortainer: \033[0mhttp://$SERVER_IP:9000"
+echo -e "\033[1;35m=====================================================\033[0m"
+
+echo -e "\n\033[1;33mContraseña inicial de Jenkins:\033[0m $JENKINS_PASSWORD"
+
