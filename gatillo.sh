@@ -86,8 +86,8 @@ cat <<EOF > index.html
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SOWIN - Panel de Servicios</title>
     <style>
         body {
@@ -137,7 +137,7 @@ cat <<EOF > index.html
             background: white;
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             margin: 20px;
             text-align: left;
             width: 300px;
@@ -145,7 +145,7 @@ cat <<EOF > index.html
         }
         .card:hover {
             transform: scale(1.05);
-            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 6px 10px rgba(0,0,0,0.15);
         }
         .card img {
             max-width: 100%;
@@ -189,22 +189,34 @@ cat <<EOF > index.html
 </header>
 <div class="container">
     <div class="card">
-        <img src="/img/jenkins.png" alt="Jenkins Logo">
+        <img src="/img/jenkins.png" alt="Jenkins Logo" />
         <h3>Jenkins</h3>
         <p>Automatiza tus pipelines de CI/CD.</p>
         <a href="http://$SERVER_IP:8080">Ir a Jenkins</a>
     </div>
     <div class="card">
-        <img src="/img/portainer.png" alt="Portainer Logo">
+        <img src="/img/portainer.png" alt="Portainer Logo" />
         <h3>Portainer</h3>
         <p>Gestiona tus contenedores y Docker desde una interfaz.</p>
         <a href="http://$SERVER_IP:9000">Ir a Portainer</a>
     </div>
     <div class="card">
-        <img src="/img/zabbix.png" alt="Zabbix Logo">
+        <img src="/img/zabbix.png" alt="Zabbix Logo" />
         <h3>Zabbix</h3>
         <p>Monitoreo de infraestructura y sistemas.</p>
         <a href="http://$SERVER_IP:8084">Ir a Zabbix</a>
+    </div>
+    <div class="card">
+        <img src="/img/n8n.png" alt="N8N Logo" />
+        <h3>N8N</h3>
+        <p>Automatización y orquestación de flujos de trabajo.</p>
+        <a href="http://n8n.tecsup.site" target="_blank" rel="noopener noreferrer">Ir a N8N</a>
+    </div>
+    <div class="card">
+        <img src="/img/telegram.png" alt="Telegram Soporte" />
+        <h3>Telegram Soporte</h3>
+        <p>Únete a nuestro grupo de soporte.</p>
+        <a href="https://t.me/soporterimac" target="_blank" rel="noopener noreferrer">Unirme a Telegram</a>
     </div>
 </div>
 </body>
@@ -245,5 +257,3 @@ echo -e "\033[1;36mPortainer: \033[0mhttp://$SERVER_IP:9000"
 echo -e "\033[1;35m=====================================================\033[0m"
 
 echo -e "\n\033[1;33mContraseña inicial de Jenkins:\033[0m $JENKINS_PASSWORD"
-
-
